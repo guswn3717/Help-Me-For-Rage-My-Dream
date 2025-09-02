@@ -353,10 +353,9 @@
 "Assets/Scripts/Player/PlayerInput.cs"
 "Assets/Scripts/Player/PlayerJab.cs"
 "Assets/Scripts/Player/PlayerMovement.cs"
+"Assets/Scripts/Player/PlayerStamina.cs"
 "Assets/Scripts/Player/PlayerStats.cs"
 "Assets/Scripts/RingBoundaryCheck.cs"
-"Assets/Scripts/SPTest.cs"
-"Assets/Scripts/StaminaSlider.cs"
 -langversion:9.0
 
 /deterministic

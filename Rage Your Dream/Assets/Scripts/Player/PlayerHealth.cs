@@ -26,6 +26,9 @@ public class PlayerHealth : MonoBehaviour
     [Header("HL 감소 속도")]
     public float hlDecreaseSpeed = 200f; // 1초당 HL 감소량
 
+    [Header("HP 회복 속도")]
+    public float hpRecoverSpeed = 50f; // ✅ 인스펙터에서 조절 가능하도록 추가
+
     private bool isHLDecreasing = false;
 
     void Start()
@@ -48,6 +51,14 @@ public class PlayerHealth : MonoBehaviour
             }
         }
 
+        // ✅ HP가 HL 위치까지 점진적으로 회복되는 로직
+        if (currentHP < currentHL)
+        {
+            currentHP += hpRecoverSpeed * Time.deltaTime;
+            if (currentHP > currentHL)
+                currentHP = currentHL;
+        }
+
         // 이미지 UI 채우기 (fillAmount = 0 ~ 1)
         if (hpBar != null) hpBar.fillAmount = Mathf.Clamp01(currentHP / maxHP);
         if (hlBar != null) hlBar.fillAmount = Mathf.Clamp01(currentHL / maxHL);
@@ -68,17 +79,14 @@ public class PlayerHealth : MonoBehaviour
         }
         else
         {
-            // 일반 공격: HP만 감소
             currentHP -= damage;
 
-            // 강공격: HL도 점진적으로 감소 시작
             if (isStrongAttack)
             {
                 isHLDecreasing = true;
             }
         }
 
-        // 다운 판정
         if (currentHP <= 0)
         {
             currentHP = 0;

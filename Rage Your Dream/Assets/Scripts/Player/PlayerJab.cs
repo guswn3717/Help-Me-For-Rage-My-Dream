@@ -9,10 +9,22 @@ public class PlayerJab : MonoBehaviour
     private bool isHeavyPunching = false;
 
     private float firstJabTime = -1f;
-    private float jabCooldown = 0.35f; // 입력 무시 시간
+    private float jabCooldown = 0.35f;
     private float jabInputLockedUntil = 0f;
 
     [SerializeField] private float secondJabThreshold = 0.4f;
+
+    [Header("스태미나")]
+    public PlayerStamina stamina;
+    public float jabStaminaCost = 0.1f;
+    public float heavyStaminaCost = 0.2f;
+
+    [Header("입력 키")]
+    public KeyCode jabKey = KeyCode.K;
+    public KeyCode heavyPunchKey = KeyCode.L;
+
+    [Header("이동")]
+    public PlayerMovement movement;
 
     public bool IsJabbing => isJabbing;
     public bool IsHeavyPunching => isHeavyPunching;
@@ -20,102 +32,133 @@ public class PlayerJab : MonoBehaviour
     void Start()
     {
         anim = GetComponent<Animator>();
+        if (stamina == null)
+            stamina = GetComponent<PlayerStamina>();
+        if (movement == null)
+            movement = GetComponent<PlayerMovement>();
     }
 
     void Update()
     {
-        if (isHeavyPunching)
-            return;
-
-        // 잽 입력
-        if (Time.time >= jabInputLockedUntil && Input.GetKeyDown(KeyCode.K))
+        // 강펀치 우선 처리
+        if (Input.GetKeyDown(heavyPunchKey))
         {
-            TryJab();
+            if (!isHeavyPunching)
+                StartCoroutine(PerformHeavyPunch());
+            return;
         }
 
-        // 잽 애니메이션 끝났는지 확인
-        AnimatorStateInfo state = anim.GetCurrentAnimatorStateInfo(0);
-        if ((state.IsName("Jab") || state.IsName("Jab_Combo")) && state.normalizedTime >= 1.0f)
+        // 잽 입력
+        if (Time.time >= jabInputLockedUntil && Input.GetKeyDown(jabKey))
         {
-            isJabbing = false;
-            anim.SetBool("IsJabbing", false);
+            if (stamina != null && !stamina.TryUseStamina(jabStaminaCost))
+            {
+                Debug.Log("스태미나 부족으로 잽 불가");
+                return;
+            }
+
+            StartCoroutine(PerformJab());
         }
     }
 
-    void TryJab()
+    IEnumerator PerformJab()
     {
         jabInputLockedUntil = Time.time + jabCooldown;
 
         if (!isJabbing)
         {
-            StartFirstJab();
-            return;
-        }
+            isJabbing = true;
+            firstJabTime = Time.time;
 
-        // 두 번째 이상 잽
-        if (Time.time - firstJabTime <= secondJabThreshold)
+            anim.SetBool("IsJabbing", true);
+            anim.SetTrigger("Jab");
+
+            if (movement != null)
+                movement.LockMove();
+
+            yield return WaitForAnimation("Jab");
+
+            if (movement != null)
+                movement.UnlockMove();
+
+            isJabbing = false;
+            anim.SetBool("IsJabbing", false);
+        }
+        else if (Time.time - firstJabTime <= secondJabThreshold)
         {
-            StartSecondJab();
+            firstJabTime = Time.time;
+            anim.Play("Jab", 0, 0.2f);
+
+            if (movement != null)
+                movement.LockMove();
+
+            yield return WaitForAnimation("Jab");
+
+            if (movement != null)
+                movement.UnlockMove();
+
+            isJabbing = false;
+            anim.SetBool("IsJabbing", false);
         }
     }
 
-    void StartFirstJab()
+    IEnumerator PerformHeavyPunch()
     {
-        isJabbing = true;
-        firstJabTime = Time.time;
-
-        anim.SetBool("IsJabbing", true);
-        anim.SetTrigger("Jab");
-    }
-
-    void StartSecondJab()
-    {
-        firstJabTime = Time.time; // 연속 잽 초기화
-        anim.Play("Jab", 0, 0.2f); // 애니메이션 앞부분 0.2초 건너뛰기
-    }
-
-    public bool CanHeavyPunch()
-    {
-        return !isHeavyPunching &&
-               (!isJabbing || anim.GetCurrentAnimatorStateInfo(0).IsName("Idle") || anim.GetCurrentAnimatorStateInfo(0).IsName("Walk"));
-    }
-
-    public void HeavyPunchStart()
-    {
-        if (!CanHeavyPunch()) return;
+        if (stamina != null && !stamina.TryUseStamina(heavyStaminaCost))
+        {
+            Debug.Log("스태미나 부족으로 강펀치 불가");
+            yield break;
+        }
 
         // 잽 상태 초기화
         isJabbing = false;
         anim.SetBool("IsJabbing", false);
         anim.ResetTrigger("Jab");
 
+        if (movement != null)
+            movement.LockMove();
+
+        // 트리거 설정 후 0.1초만 유지
+        anim.SetTrigger("Strong_Punch");
+        StartCoroutine(ResetTriggerShortly("Strong_Punch", 0.1f));
+
+        // Strong_Punch 애니메이션 상태 진입 시점까지 대기
+        yield return new WaitUntil(() => anim.GetCurrentAnimatorStateInfo(0).IsName("Strong_Punch"));
+
         isHeavyPunching = true;
 
-        // 강펀치 애니메이션으로 즉시 전환
-        anim.Play("HeavyPunch", 0, 0f);
+        // 애니메이션 끝날 때까지 대기
+        yield return WaitForAnimation("Strong_Punch");
+
+        if (movement != null)
+            movement.UnlockMove();
+
+        isHeavyPunching = false;
     }
 
-    // 애니메이션 이벤트에서 호출
-    public void HeavyPunchEnd()
-    {
-        // 1초 뒤 상태 초기화
-        StartCoroutine(ResetAfterDelay(1f));
-    }
-
-    private IEnumerator ResetAfterDelay(float delay)
+    // 트리거를 짧게 켜고 끄는 코루틴
+    private IEnumerator ResetTriggerShortly(string triggerName, float delay)
     {
         yield return new WaitForSeconds(delay);
+        anim.ResetTrigger(triggerName);
+    }
 
-        // 코드 변수 초기화
-        isHeavyPunching = false;
-        isJabbing = false;
+    private IEnumerator WaitForAnimation(string animName)
+    {
+        AnimatorStateInfo state = anim.GetCurrentAnimatorStateInfo(0);
 
-        // Animator 초기화
-        anim.SetBool("IsJabbing", false);
-        anim.ResetTrigger("Jab");
-        anim.ResetTrigger("HeavyPunch");
+        // 애니메이션 시작될 때까지 대기
+        while (!state.IsName(animName))
+        {
+            yield return null;
+            state = anim.GetCurrentAnimatorStateInfo(0);
+        }
 
-        // 강제 Idle 상태로 전환
-        anim.Play("Idle", 0, 0f);
+        // 애니메이션 끝날 때까지 대기
+        while (state.normalizedTime < 1.0f)
+        {
+            yield return null;
+            state = anim.GetCurrentAnimatorStateInfo(0);
+        }
     }
 }
