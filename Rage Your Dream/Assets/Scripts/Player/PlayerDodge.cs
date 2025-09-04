@@ -25,7 +25,6 @@ public class PlayerDodge : MonoBehaviour
         anim = GetComponent<Animator>();
         originalDrag = rb.drag;
 
-        // 자동으로 PlayerStamina 찾아오기 (붙어 있는 경우)
         if (stamina == null)
             stamina = GetComponent<PlayerStamina>();
     }
@@ -34,11 +33,10 @@ public class PlayerDodge : MonoBehaviour
     {
         if (Input.GetKeyDown(KeyCode.Space) && !isDodging)
         {
-            // 스태미나 체크
-            if (stamina != null && !stamina.TryUseStamina(dodgeStaminaCost))
+            if (stamina != null)
             {
-                Debug.Log("스태미나 부족으로 회피 불가");
-                return;
+                // 닷지용 SP 처리
+                stamina.TryUseStaminaDodge(dodgeStaminaCost);
             }
 
             Vector3 inputDir = new Vector3(Input.GetAxisRaw("Horizontal"), 0, Input.GetAxisRaw("Vertical")).normalized;
@@ -81,8 +79,5 @@ public class PlayerDodge : MonoBehaviour
         anim.SetBool("isDodging", false);
     }
 
-    public bool IsDodging()
-    {
-        return isDodging;
-    }
+    public bool IsDodging() => isDodging;
 }

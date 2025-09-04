@@ -1,9 +1,11 @@
 using UnityEngine;
 using System.Collections;
 
+[RequireComponent(typeof(Rigidbody))]
 public class PlayerJab : MonoBehaviour
 {
     private Animator anim;
+    private Rigidbody rb;
 
     private bool isJabbing = false;
     private bool isHeavyPunching = false;
@@ -26,16 +28,23 @@ public class PlayerJab : MonoBehaviour
     [Header("이동")]
     public PlayerMovement movement;
 
+    [Header("잽 밀기")]
+    public float jabPushForce = 3f;      
+    public float jabPushDuration = 0.05f;
+
+    [Header("강펀치 밀기")]
+    public float heavyPunchPushForce = 8f;  
+    public float heavyPunchPushDuration = 0.07f;
+
     public bool IsJabbing => isJabbing;
     public bool IsHeavyPunching => isHeavyPunching;
 
     void Start()
     {
         anim = GetComponent<Animator>();
-        if (stamina == null)
-            stamina = GetComponent<PlayerStamina>();
-        if (movement == null)
-            movement = GetComponent<PlayerMovement>();
+        rb = GetComponent<Rigidbody>();
+        if (stamina == null) stamina = GetComponent<PlayerStamina>();
+        if (movement == null) movement = GetComponent<PlayerMovement>();
     }
 
     void Update()
@@ -44,17 +53,23 @@ public class PlayerJab : MonoBehaviour
         if (Input.GetKeyDown(heavyPunchKey))
         {
             if (!isHeavyPunching)
+            {
+                if (stamina != null)
+                {
+                    // 펀치용 SP 처리
+                    stamina.TryUseStaminaPunch(heavyStaminaCost);
+                }
                 StartCoroutine(PerformHeavyPunch());
+            }
             return;
         }
 
         // 잽 입력
         if (Time.time >= jabInputLockedUntil && Input.GetKeyDown(jabKey))
         {
-            if (stamina != null && !stamina.TryUseStamina(jabStaminaCost))
+            if (stamina != null)
             {
-                Debug.Log("스태미나 부족으로 잽 불가");
-                return;
+                stamina.TryUseStaminaPunch(jabStaminaCost);
             }
 
             StartCoroutine(PerformJab());
@@ -73,14 +88,12 @@ public class PlayerJab : MonoBehaviour
             anim.SetBool("IsJabbing", true);
             anim.SetTrigger("Jab");
 
-            if (movement != null)
-                movement.LockMove();
+            movement?.LockMove();
+            StartCoroutine(JabPush());
 
             yield return WaitForAnimation("Jab");
 
-            if (movement != null)
-                movement.UnlockMove();
-
+            movement?.UnlockMove();
             isJabbing = false;
             anim.SetBool("IsJabbing", false);
         }
@@ -89,54 +102,58 @@ public class PlayerJab : MonoBehaviour
             firstJabTime = Time.time;
             anim.Play("Jab", 0, 0.2f);
 
-            if (movement != null)
-                movement.LockMove();
+            movement?.LockMove();
+            StartCoroutine(JabPush());
 
             yield return WaitForAnimation("Jab");
 
-            if (movement != null)
-                movement.UnlockMove();
-
+            movement?.UnlockMove();
             isJabbing = false;
             anim.SetBool("IsJabbing", false);
         }
     }
 
+    private IEnumerator JabPush()
+    {
+        if (rb != null)
+        {
+            rb.AddForce(transform.forward * jabPushForce, ForceMode.Impulse);
+            yield return new WaitForSeconds(jabPushDuration);
+            rb.velocity = Vector3.zero;
+        }
+    }
+
     IEnumerator PerformHeavyPunch()
     {
-        if (stamina != null && !stamina.TryUseStamina(heavyStaminaCost))
-        {
-            Debug.Log("스태미나 부족으로 강펀치 불가");
-            yield break;
-        }
-
-        // 잽 상태 초기화
         isJabbing = false;
         anim.SetBool("IsJabbing", false);
         anim.ResetTrigger("Jab");
 
-        if (movement != null)
-            movement.LockMove();
+        movement?.LockMove();
 
-        // 트리거 설정 후 0.1초만 유지
         anim.SetTrigger("Strong_Punch");
         StartCoroutine(ResetTriggerShortly("Strong_Punch", 0.1f));
 
-        // Strong_Punch 애니메이션 상태 진입 시점까지 대기
         yield return new WaitUntil(() => anim.GetCurrentAnimatorStateInfo(0).IsName("Strong_Punch"));
-
         isHeavyPunching = true;
 
-        // 애니메이션 끝날 때까지 대기
+        StartCoroutine(HeavyPunchPush());
         yield return WaitForAnimation("Strong_Punch");
 
-        if (movement != null)
-            movement.UnlockMove();
-
+        movement?.UnlockMove();
         isHeavyPunching = false;
     }
 
-    // 트리거를 짧게 켜고 끄는 코루틴
+    private IEnumerator HeavyPunchPush()
+    {
+        if (rb != null)
+        {
+            rb.AddForce(transform.forward * heavyPunchPushForce, ForceMode.Impulse);
+            yield return new WaitForSeconds(heavyPunchPushDuration);
+            rb.velocity = Vector3.zero;
+        }
+    }
+
     private IEnumerator ResetTriggerShortly(string triggerName, float delay)
     {
         yield return new WaitForSeconds(delay);
@@ -147,14 +164,12 @@ public class PlayerJab : MonoBehaviour
     {
         AnimatorStateInfo state = anim.GetCurrentAnimatorStateInfo(0);
 
-        // 애니메이션 시작될 때까지 대기
         while (!state.IsName(animName))
         {
             yield return null;
             state = anim.GetCurrentAnimatorStateInfo(0);
         }
 
-        // 애니메이션 끝날 때까지 대기
         while (state.normalizedTime < 1.0f)
         {
             yield return null;
