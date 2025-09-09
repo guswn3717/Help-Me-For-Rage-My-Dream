@@ -150,8 +150,35 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: -8679921383154817045, guid: d2d1f81676b792b4d9a1133053fa38ef, type: 3}
       insertIndex: -1
       addedObject: {fileID: 6545452028421332492}
-    m_AddedComponents: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: d2d1f81676b792b4d9a1133053fa38ef, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: -4968977904367927744}
   m_SourcePrefab: {fileID: 100100000, guid: d2d1f81676b792b4d9a1133053fa38ef, type: 3}
+--- !u!1 &5971753015315665985 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 919132149155446097, guid: d2d1f81676b792b4d9a1133053fa38ef, type: 3}
+  m_PrefabInstance: {fileID: 6782003686786672912}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &-4968977904367927744
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5971753015315665985}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b2d8418b0b9634b1892b0268dd9c2743, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  boneShape: 1
+  drawBones: 1
+  drawTripods: 0
+  boneSize: 1
+  tripodSize: 1
+  boneColor: {r: 0, g: 0, b: 1, a: 0.5}
+  m_Transforms: []
 --- !u!4 &6454851334233542395 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: d2d1f81676b792b4d9a1133053fa38ef, type: 3}

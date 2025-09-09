@@ -345,6 +345,7 @@
 "Assets/Scripts/Enemy.cs"
 "Assets/Scripts/EnemyHealth.cs"
 "Assets/Scripts/HealManager.cs"
+"Assets/Scripts/OP/MainMenuButtons.cs"
 "Assets/Scripts/OP/OP.cs"
 "Assets/Scripts/OP/Rain.cs"
 "Assets/Scripts/Player/PlayerAttack.cs"
